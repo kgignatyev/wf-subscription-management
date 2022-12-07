@@ -6,7 +6,7 @@
 
     <groupId>com.xpansiv.workflows</groupId>
     <artifactId>wf-subscription-management</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
     <packaging>jar</packaging>
 
 

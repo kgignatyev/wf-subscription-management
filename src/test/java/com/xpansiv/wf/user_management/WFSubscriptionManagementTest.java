@@ -45,7 +45,7 @@ public class WFSubscriptionManagementTest {
     private Worker wfWorker;
     private Worker notificationWorker;
 
-    private UserNotificationActivityTestImpl notificationActivityTest = new UserNotificationActivityTestImpl();
+    private ServiceManagementActivityTestImpl notificationActivityTest = new ServiceManagementActivityTestImpl();
      WorkflowClient wfClient;
     private WorkflowServiceStubs wfService;
     private String wfNamespace;
@@ -56,7 +56,7 @@ public class WFSubscriptionManagementTest {
         testEnv = TestWorkflowEnvironment.newInstance();
         wfWorker = testEnv.newWorker(WFSubscriptionManagement.WF_TASKS_QUEUE);
         wfWorker.registerWorkflowImplementationTypes(WFSubscriptionManagementImpl.class);
-        notificationWorker = testEnv.newWorker("USER_NOTIFICATION_ACT");
+        notificationWorker = testEnv.newWorker("SVC_MANAGEMENT");
         notificationWorker.registerActivitiesImplementations(notificationActivityTest);
         testEnv.start();
         wfNamespace = "default";
@@ -70,7 +70,7 @@ public class WFSubscriptionManagementTest {
     }
 
     @Test
-    public void testManyDaysWorkflow() throws Exception {
+    public void testManyDaysWorkflowAutoCancellation(){
 
         Map<String, Object> searchAttributes = createSA( "" + System.nanoTime());
         WorkflowOptions workflowOptions = WorkflowOptions.newBuilder()
@@ -81,17 +81,16 @@ public class WFSubscriptionManagementTest {
 
         WFSubscriptionManagement workflow = wfClient.newWorkflowStub(WFSubscriptionManagement.class, workflowOptions);
         SubscriptionRequest subscription = new SubscriptionRequest().setProduct("Super Service").setUserId("u-a1");
-        WorkflowExecution wfExecution = WorkflowClient.start(workflow::subscribeForService, subscription);
+        WorkflowExecution wfExecution = WorkflowClient.start(workflow::subscribeForService, subscription, null);
         String wfID = wfExecution.getWorkflowId();
         WorkflowServiceGrpc.WorkflowServiceBlockingStub svc = wfService.blockingStub();
-        Thread.sleep(3000);//just to demo that WF is really dormant
         testEnv.sleep(Duration.ofDays(6));
         ListClosedWorkflowExecutionsResponse closedWorkflowsList = svc.listClosedWorkflowExecutions( ListClosedWorkflowExecutionsRequest.newBuilder()
                 .setNamespace( wfNamespace)
                 .setExecutionFilter( WorkflowExecutionFilter.newBuilder().setWorkflowId( wfID).build())
                 .build());
         assertEquals( "we should not have finished workflows yet", 0,closedWorkflowsList.getExecutionsCount());
-        testEnv.sleep(Duration.ofDays(6));
+        testEnv.sleep(Duration.ofDays(9));
 
         Awaitility.await("workflow "+wfID+" finished").atMost(Duration.ofSeconds(10)).pollInterval(Duration.ofSeconds(1)).until(() -> {
             try {

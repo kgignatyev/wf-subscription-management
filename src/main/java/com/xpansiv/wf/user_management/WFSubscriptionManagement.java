@@ -13,7 +13,7 @@ public interface WFSubscriptionManagement {
     String WF_TASKS_QUEUE = "subscription_management";
 
     @WorkflowMethod
-    void subscribeForService(SubscriptionRequest sr);
+    void subscribeForService(SubscriptionRequest sr, PaymentInfo pi);
 
 
     @QueryMethod
