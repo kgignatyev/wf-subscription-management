@@ -13,13 +13,13 @@ public class WFSubscriptionManagementImpl implements WFSubscriptionManagement {
     private Date nextPaymentDue;
     private boolean cancellationRequested = false;
     private PaymentInfo paymentInfo;
-    private final ActivityOptions notificationOptions =buildActivityOptions("USER_NOTIFICATION_ACT");
+    private final ActivityOptions notificationOptions = buildActivityOptions("USER_NOTIFICATION_ACT");
 
     private final UserNotificationActivity userNotificationActivity =
             Workflow.newActivityStub(UserNotificationActivity.class, notificationOptions);
 
 
-    public ActivityOptions buildActivityOptions( String queueName ){
+    public ActivityOptions buildActivityOptions(String queueName) {
         return ActivityOptions.newBuilder()
                 .setTaskQueue(queueName)
                 .setStartToCloseTimeout(Duration.ofSeconds(5)).build();
@@ -27,18 +27,18 @@ public class WFSubscriptionManagementImpl implements WFSubscriptionManagement {
 
     @Override
     public void subscribeForService(SubscriptionRequest sr) {
-
         subscriptionStatus = SubscriptionStatus.TRIAL;
-        nextPaymentDue =  new Date( Workflow.currentTimeMillis() + daysAsMillis(10));
-        Workflow.await( Duration.ofMillis( daysAsMillis(11)), ()-> cancellationRequested || (paymentInfo!=null));
-        if( !cancellationRequested && paymentInfo == null ){
-            userNotificationActivity.notifyUser( new UserNotification().setUserId( sr.userId ).setMessage("Trial expired, please pay"));
+        nextPaymentDue = new Date(Workflow.currentTimeMillis() + daysAsMillis(10));
+        Workflow.await(Duration.ofMillis(daysAsMillis(11)), () -> cancellationRequested || (paymentInfo != null));
+        if (!cancellationRequested && paymentInfo == null) {
+            userNotificationActivity.notifyUser(new UserNotification()
+                    .setUserId(sr.userId)
+                    .setMessage("Trial expired, please pay"));
         }
-
     }
 
     private long daysAsMillis(int days) {
-        return days*24*3600000L;
+        return days * 24 * 3600000L;
     }
 
     @Override

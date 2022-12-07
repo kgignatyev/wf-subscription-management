@@ -58,9 +58,7 @@ public class WFSubscriptionManagementTest {
         wfWorker.registerWorkflowImplementationTypes(WFSubscriptionManagementImpl.class);
         notificationWorker = testEnv.newWorker("USER_NOTIFICATION_ACT");
         notificationWorker.registerActivitiesImplementations(notificationActivityTest);
-
         testEnv.start();
-
         wfNamespace = "default";
         wfService = testEnv.getWorkflowServiceStubs();
         wfClient = testEnv.getWorkflowClient();
@@ -72,7 +70,7 @@ public class WFSubscriptionManagementTest {
     }
 
     @Test
-    public void testManyDaysWorkflow() {
+    public void testManyDaysWorkflow() throws Exception {
 
         Map<String, Object> searchAttributes = createSA( "" + System.nanoTime());
         WorkflowOptions workflowOptions = WorkflowOptions.newBuilder()
@@ -85,22 +83,25 @@ public class WFSubscriptionManagementTest {
         SubscriptionRequest subscription = new SubscriptionRequest().setProduct("Super Service").setUserId("u-a1");
         WorkflowExecution wfExecution = WorkflowClient.start(workflow::subscribeForService, subscription);
         String wfID = wfExecution.getWorkflowId();
-        testEnv.sleep(Duration.ofDays(12));
         WorkflowServiceGrpc.WorkflowServiceBlockingStub svc = wfService.blockingStub();
+        Thread.sleep(3000);//just to demo that WF is really dormant
+        testEnv.sleep(Duration.ofDays(6));
+        ListClosedWorkflowExecutionsResponse closedWorkflowsList = svc.listClosedWorkflowExecutions( ListClosedWorkflowExecutionsRequest.newBuilder()
+                .setNamespace( wfNamespace)
+                .setExecutionFilter( WorkflowExecutionFilter.newBuilder().setWorkflowId( wfID).build())
+                .build());
+        assertEquals( "we should not have finished workflows yet", 0,closedWorkflowsList.getExecutionsCount());
+        testEnv.sleep(Duration.ofDays(6));
+
         Awaitility.await("workflow "+wfID+" finished").atMost(Duration.ofSeconds(10)).pollInterval(Duration.ofSeconds(1)).until(() -> {
             try {
-
                 ListClosedWorkflowExecutionsResponse closedWorkflows = svc.listClosedWorkflowExecutions( ListClosedWorkflowExecutionsRequest.newBuilder()
                         .setNamespace( wfNamespace)
-                        .setExecutionFilter( WorkflowExecutionFilter.newBuilder()
-                                .setWorkflowId( wfID)
-                                .build())
+                        .setExecutionFilter( WorkflowExecutionFilter.newBuilder().setWorkflowId( wfID).build())
                         .build());
-
-                System.out.println("closed = " + closedWorkflows.getExecutionsCount());
+                System.out.println("# closed workflows = " + closedWorkflows.getExecutionsCount());
                 return closedWorkflows.getExecutionsCount()==1 ;
             } catch (Exception e) {
-                //ignoring
                 e.printStackTrace();
             }
             return false;
